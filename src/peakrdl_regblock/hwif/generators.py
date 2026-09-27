@@ -13,6 +13,15 @@ if TYPE_CHECKING:
     from . import Hwif
     from systemrdl.rdltypes import UserEnum
 
+def anonymous_field_spans(node: 'RegNode', width: int) -> bool:
+    """
+    True if the register's anonymous field covers bits [width-1:0], in which
+    case external data ports can be a plain vector rather than a packed struct
+    """
+    field = node.anonymous_field
+    return field is not None and field.low == 0 and field.high == width - 1
+
+
 class HWIFStructGenerator(RDLFlatStructGenerator):
     def __init__(self, hwif: 'Hwif', hwif_name: str) -> None:
         super().__init__()
@@ -107,7 +116,9 @@ class InputStructGenerator_Hier(HWIFStructGenerator):
         return WalkerAction.Continue
 
     def add_external_reg_rd_data(self, node: 'RegNode', width: int, n_subwords: int) -> None:
-        if n_subwords == 1:
+        if n_subwords == 1 and anonymous_field_spans(node, width):
+            self.add_member("rd_data", width)
+        elif n_subwords == 1:
             # External reg is 1 sub-word. Add a packed struct to represent it
             type_name = self.get_typdef_name(node, "__fields")
             self.push_struct(type_name, "rd_data", packed=True)
@@ -139,8 +150,9 @@ class InputStructGenerator_Hier(HWIFStructGenerator):
             self.add_member("rd_data", width)
 
     def enter_Field(self, node: 'FieldNode') -> None:
-        type_name = self.get_typdef_name(node)
-        self.push_struct(type_name, kwf(node.inst_name))
+        if not node.is_anonymous:
+            type_name = self.get_typdef_name(node)
+            self.push_struct(type_name, kwf(node.inst_name))
 
         # Provide input to field's next value if it is writable by hw, and it
         # was not overridden by the 'next' property
@@ -184,7 +196,8 @@ class InputStructGenerator_Hier(HWIFStructGenerator):
                 self.add_member('decrvalue', width)
 
     def exit_Field(self, node: 'FieldNode') -> None:
-        self.pop_struct()
+        if not node.is_anonymous:
+            self.pop_struct()
 
 
 class OutputStructGenerator_Hier(HWIFStructGenerator):
@@ -241,7 +254,9 @@ class OutputStructGenerator_Hier(HWIFStructGenerator):
         return WalkerAction.Continue
 
     def add_external_reg_wr_data(self, name: str, node: 'RegNode', width: int, n_subwords: int) -> None:
-        if n_subwords == 1:
+        if n_subwords == 1 and anonymous_field_spans(node, width):
+            self.add_member(name, width)
+        elif n_subwords == 1:
             # External reg is 1 sub-word. Add a packed struct to represent it
             type_name = self.get_typdef_name(node, "__fields")
             self.push_struct(type_name, name, packed=True)
@@ -273,8 +288,9 @@ class OutputStructGenerator_Hier(HWIFStructGenerator):
             self.add_member(name, width)
 
     def enter_Field(self, node: 'FieldNode') -> None:
-        type_name = self.get_typdef_name(node)
-        self.push_struct(type_name, kwf(node.inst_name))
+        if not node.is_anonymous:
+            type_name = self.get_typdef_name(node)
+            self.push_struct(type_name, kwf(node.inst_name))
 
         # Expose field's value if it is readable by hw
         if node.is_hw_readable:
@@ -298,7 +314,8 @@ class OutputStructGenerator_Hier(HWIFStructGenerator):
             self.add_member('decrthreshold')
 
     def exit_Field(self, node: 'FieldNode') -> None:
-        self.pop_struct()
+        if not node.is_anonymous:
+            self.pop_struct()
 
     def exit_Reg(self, node: 'RegNode') -> None:
         if node.is_interrupt_reg:

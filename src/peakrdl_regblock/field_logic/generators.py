@@ -45,7 +45,8 @@ class CombinationalStructGenerator(RDLStructGenerator):
                 else:
                     extra_combo_signals[signal.name] = signal
 
-        self.push_struct(kwf(node.inst_name))
+        if not node.is_anonymous:
+            self.push_struct(kwf(node.inst_name))
         self.add_member("next", node.width)
         self.add_member("load_next")
         for signal in extra_combo_signals.values():
@@ -56,7 +57,8 @@ class CombinationalStructGenerator(RDLStructGenerator):
             self.add_down_counter_members(node)
         if node.get_property('paritycheck'):
             self.add_member("parity_error")
-        self.pop_struct()
+        if not node.is_anonymous:
+            self.pop_struct()
 
     def add_up_counter_members(self, node: 'FieldNode') -> None:
         self.add_member('incrthreshold')
@@ -87,7 +89,8 @@ class FieldStorageStructGenerator(RDLStructGenerator):
         return WalkerAction.Continue
 
     def enter_Field(self, node: 'FieldNode') -> None:
-        self.push_struct(kwf(node.inst_name))
+        if not node.is_anonymous:
+            self.push_struct(kwf(node.inst_name))
 
         if node.implements_storage:
             self.add_member("value", node.width)
@@ -97,7 +100,8 @@ class FieldStorageStructGenerator(RDLStructGenerator):
         if self.field_logic.has_next_q(node):
             self.add_member("next_q", node.width)
 
-        self.pop_struct()
+        if not node.is_anonymous:
+            self.pop_struct()
 
 
 class FieldLogicGenerator(RDLForLoopGenerator):

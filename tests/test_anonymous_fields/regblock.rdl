@@ -1,0 +1,32 @@
+property anonymous {
+    type = boolean;
+    component = field;
+    default = true;
+};
+
+addrmap top {
+    reg {
+        field {sw=rw; hw=r; anonymous;} EPID[31:0] = 0x1234;
+    } EPID @ 0x0;
+
+    reg {
+        field {sw=r; hw=w; anonymous;} value[15:0];
+    } STATUS @ 0x4;
+
+    reg {
+        field {sw=rw; hw=r; swmod; anonymous;} x[7:0] = 0;
+    } CFG[2] @ 0x8 += 4;
+
+    reg {
+        field {sw=rw; hw=w; woclr; intr; anonymous;} f[3:0] = 0;
+    } IRQ @ 0x10;
+
+    reg {
+        field {sw=r; hw=na; counter; anonymous;} c[7:0] = 0;
+    } CNT @ 0x14;
+
+    reg {
+        field {sw=rw; hw=r;} a[7:0] = 0x11;
+        field {sw=rw; hw=r;} b[15:8] = 0x22;
+    } NORMAL @ 0x18;
+};

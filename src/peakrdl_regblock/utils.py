@@ -2,7 +2,7 @@ import re
 from typing import Match, Union, Optional
 
 from systemrdl.rdltypes.references import PropertyReference
-from systemrdl.node import Node, AddrmapNode
+from systemrdl.node import Node, AddrmapNode, FieldNode
 
 from .identifier_filter import kw_filter as kwf
 from .sv_int import SVInt
@@ -10,7 +10,12 @@ from .sv_int import SVInt
 def get_indexed_path(top_node: Node, target_node: Node) -> str:
     """
     TODO: Add words about indexing and why i'm doing this. Copy from logbook
+
+    Anonymous fields do not have their own level of hierarchy, so the path of
+    the parent register is returned instead.
     """
+    if isinstance(target_node, FieldNode) and target_node.is_anonymous:
+        target_node = target_node.parent
     path = target_node.get_rel_path(top_node, empty_array_suffix="[!]")
 
     # replace unknown indexes with incrementing iterators i0, i1, ...
